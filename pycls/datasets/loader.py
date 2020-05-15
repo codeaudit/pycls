@@ -7,7 +7,8 @@
 
 """Data loader."""
 
-import pycls.datasets.paths as dp
+import os
+
 import torch
 from pycls.core.config import cfg
 from pycls.datasets.cifar10 import Cifar10
@@ -19,17 +20,22 @@ from torch.utils.data.sampler import RandomSampler
 # Supported datasets
 _DATASET_CATALOG = {"cifar10": Cifar10, "imagenet": ImageNet}
 
+# Default data directory (/path/pycls/pycls/datasets/data)
+_DEF_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+
+# Data paths
+_paths = {
+    "cifar10": _DEF_DATA_DIR + "/cifar10",
+    "imagenet": _DEF_DATA_DIR + "/imagenet",
+}
+
 
 def _construct_loader(dataset_name, split, batch_size, shuffle, drop_last):
     """Constructs the data loader for the given dataset."""
-    assert dataset_name in _DATASET_CATALOG.keys(), "Dataset '{}' not supported".format(
-        dataset_name
-    )
-    assert dp.has_data_path(dataset_name), "Dataset '{}' has no data path".format(
-        dataset_name
-    )
+    err_str = "Dataset '{}' not supported"
+    assert dataset_name in _DATASET_CATALOG.keys(), err_str.format(dataset_name)
     # Retrieve the data path for the dataset
-    data_path = dp.get_data_path(dataset_name)
+    data_path = _paths[dataset_name]
     # Construct the dataset
     dataset = _DATASET_CATALOG[dataset_name](data_path, split)
     # Create a sampler for multi-process training
@@ -71,9 +77,8 @@ def construct_test_loader():
 
 def shuffle(loader, cur_epoch):
     """"Shuffles the data."""
-    assert isinstance(
-        loader.sampler, (RandomSampler, DistributedSampler)
-    ), "Sampler type '{}' not supported".format(type(loader.sampler))
+    err_str = "Sampler type '{}' not supported".format(type(loader.sampler))
+    assert isinstance(loader.sampler, (RandomSampler, DistributedSampler)), err_str
     # RandomSampler handles shuffling automatically
     if isinstance(loader.sampler, DistributedSampler):
         # DistributedSampler shuffles data based on epoch
